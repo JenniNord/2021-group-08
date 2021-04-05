@@ -1,13 +1,13 @@
-#Group 8
+# Group 8
 
-##Requirements
+## Requirements
 * Ubuntu 20.X
 * Docker 20.10.X
 * Docker-compose 1.28.X
 * g++ 9.3.X
 * Git
 
-##Set-up
+## Set-up
 1. Clone repository into a directory of your choosing using SSH
 `git clone git@git.chalmers.se:courses/dit638/students/2021-group-08.git`
 2. Change directory to the repository
@@ -22,8 +22,8 @@
 6. To run the test suites 
    1. `make test`
  
-##Workflow
-###Add new features
+## Workflow
+### Add new features
 1. Add Trello card and assign team members
 2. Create issue in gitlab
    1. Add requirement the issue is covering
@@ -36,7 +36,7 @@
    1. At least one member approves of the completed feature
    2. Rebasing from master will be used when needed
 
-###Bugfixes
+### Bugfixes
 1. Add Trello card and assign team members
 2. Create issue in gitlab
 3. If bug is discovered after feature has been committed to master: create new branch for bug fixing
@@ -45,7 +45,7 @@
 6. Update corresponding Trello card with new status
 7. Team member with least possible involvement reviews committed code for bug fix
 
-###Commit messages
+### Commit messages
 Adapted from: https://chris.beams.io/posts/git-commit/
 
 #### Style
@@ -71,8 +71,9 @@ Adapted from: https://chris.beams.io/posts/git-commit/
 * We plan to merge into a branch rather than rebasing.
 
 ##### Example
-```[IMPLEMENT] Summarize changes in around 50 characters or less
-
+<<<<<<< HEAD
+```
+[IMPLEMENT] Summarize changes in around 50 characters or less
 More detailed explanatory text, if necessary. Wrap it to about 72
 characters or so. In some contexts, the first line is treated as the
 subject of the commit and the rest of the text as the body. The
