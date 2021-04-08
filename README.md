@@ -57,6 +57,7 @@ Adapted from: https://chris.beams.io/posts/git-commit/
    * [FIX]
    * [IMPLEMENT]
    * [INIT]
+   * [TEST]
 
 #### Content
 * What, why and how
@@ -67,13 +68,16 @@ Adapted from: https://chris.beams.io/posts/git-commit/
 
 #### Metadata
 * Co-author tag used when pair programming or collaborating
+   * Add to top of message, under the subject line (see example)
 * Issue tracking ID (“Resolves issue #$”)
 * We plan to merge into a branch rather than rebasing.
 
 ##### Example
-<<<<<<< HEAD
 ```
 [IMPLEMENT] Summarize changes in around 50 characters or less
+
+Co-authored-by: chalmersid <chalmersid@student.chalmers.se>
+
 More detailed explanatory text, if necessary. Wrap it to about 72
 characters or so. In some contexts, the first line is treated as the
 subject of the commit and the rest of the text as the body. The
@@ -87,4 +91,4 @@ Are there side effects or other unintuitive consequences of this
 change? Here's the place to explain them.
 
 Resolves: #123
-Co-author: @ whoever who worked with```
+```
