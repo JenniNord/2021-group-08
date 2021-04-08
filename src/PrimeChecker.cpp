@@ -1,17 +1,18 @@
 #include "PrimeChecker.hpp"
 
 bool PrimeChecker::isPrime(uint16_t n) {
-bool retVal{true};
+bool retVal{false};
+
 if (n<2 || 0 == n%2) {
-retVal = false;
+	retVal = false;
 }
 else {
-for(uint16_t i{3}; (i*i) <= n; i += 2) {
-if (0 == n%i) {
-return false;
-break;
-}
-}
+	for(uint16_t i{3}; (i*i) <= n; i += 2) {
+		if (0 == n%i) {
+		return false;
+	break;
+		}
+	}
 }
 return retVal;
 }
