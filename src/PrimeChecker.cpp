@@ -1,7 +1,7 @@
 #include "PrimeChecker.hpp"
 
 bool PrimeChecker::isPrime(uint16_t n) {
-bool retVal{false};
+bool retVal{true};
 
 if (n<2 || 0 == n%2) {
 	retVal = false;
