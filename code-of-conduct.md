@@ -3,7 +3,7 @@
 * Work will be done online through a combination of live meetings, Trello board, and pair programming
 * A dedicated Scrum master will be responsible for the daily stand-up meetings and make sure that everything is in order
 * The role will be rotated each Sprint (each Sprint is 2 weeks long)
-   * Scrum Master: www.agilealliance.org/glossary/scrum-master/
+   * [Scrum Master](www.agilealliance.org/glossary/scrum-master/)
    * Manage the stand-up meetings and Trello board
    * Create a nice working environment for team
    * Clearing obstacles
@@ -15,16 +15,19 @@
 * All team members are expected to attend meetings
 * Daily stand-up at the start of all working days/sessions 
 * Git commit messages & Trello tags
+   * Connect commits to corresponding issues which have been assigned to specific team members.
+   * Ensure contributing team members besides the party who makes the commit are correctly credited (as per the defined commit message format).
+   * Always keep Trello up to date with the progress of tasks.
 
 ## How do we ensure knowledge transfer among our team members?
 * Pair programming
 * Share resources on Discord/Trello
-* Workshops
-* Split up research and summarize vital points for team members
+* Workshops to educate and stay informed on the technical level
+   * Split up research and summarize vital points for team members
 * Documentation
-* Code comments
-* README
-* Git commit messages (in a defined format)
+   * Code comments
+   * README
+   * Git commit messages (in a defined format)
 
 ## What is our usual communication plan?
 * Sprint planning meetings on Mondays
@@ -34,4 +37,10 @@
 
 ## How will we solve conflicts? 
 * Discussion between group members
+   * Reference: [The Five Steps to Conflict Resolution](https://amanet.org/articles/the-five-steps-to-conflict-resolution)
+   * Identify the source of the problems and clarify what the disagreement is
+   * Look beyond the incident to find a common goal for both parties
+   * Discuss solutions and ways to meet the common goal
+   * Identify solutions that both parties can support through compromise and collaboration
+   * Agree on a way to resolve the conflict
 * If a team member is unable to perform an assigned task, it will be reassigned to another team member
