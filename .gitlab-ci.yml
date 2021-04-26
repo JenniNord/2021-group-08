@@ -35,15 +35,21 @@ release:
     - docker-build
   stage: deploy
   script:
+    # Install buildx
+    - export DOCKER_CLI_EXPERIMENTAL=enabled
     - mkdir -p ~/.docker/cli-plugins
     - cd ~/.docker/cli-plugins/
     - wget https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64
     - mv buildx-v0.5.1.linux-amd64 docker-buildx
     - chmod 755 docker-buildx
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx create --name platformbuilder --use
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx inspect --bootstrap
-    - DOCKER_CLI_EXPERIMENTAL=enabled docker buildx build --platform "linux/amd64,linux/arm/v7,linux/arm/v6, linux/arm64" -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" --push .
-    - docker push "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG"
+    - docker info
+    - docker version
+    # Build with buildx
+    - cd /builds/courses/dit638/students/2021-group-08
+    - docker buildx create --name platformbuilder --use
+    - docker buildx inspect --bootstrap
+    - docker buildx build --push --platform linux/amd64,linux/arm64,linux/arm/v7 -t "$CI_REGISTRY_IMAGE":"$CI_COMMIT_TAG" .
+    # linux/arm/v6, for the reason please check back CI pipeline log
   when: on_success
   only:
     - tags
