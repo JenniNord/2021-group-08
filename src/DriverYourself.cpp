@@ -25,6 +25,14 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <sstream>
 
+#include <opencv2/core/core.hpp>
+
+#include <iostream>
+
+#include <opencv2/imgcodecs.hpp>
+
+
+
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
@@ -137,6 +145,53 @@ int32_t main(int32_t argc, char **argv) {
                 cv::Mat imgColorSpace;
                 // Checking that the HSV image is within the range, filtering out the desired colors, and displaying it
                 cv::inRange(imgHSV, cv::Scalar(minH, minS, minV), cv::Scalar(maxH, maxS, maxV), imgColorSpace);
+
+
+
+                // Start of pasted code from: https://docs.opencv.org/3.4/da/d0c/tutorial_bounding_rects_circles.html
+                // Sets a threshold for the Canny algo
+                int thresh = 100;
+                // Makes the circles/recs a random colour
+                cv::RNG rng(12345);
+                // Output Mat for the contour finder
+                cv::Mat canny_output;
+                // Input the color mask, output object, threshold number and thresh*2 (why?)
+                cv::Canny(imgColorSpace, canny_output, thresh, thresh*2);
+                // Output for the contours
+                std::vector<std::vector<cv::Point> > contours;
+                // Find the contours using the Canny output
+                cv::findContours(canny_output, contours, cv::RETR_TREE, cv::CHAIN_APPROX_SIMPLE);
+
+                // Creating arrays to hold
+                std::vector<std::vector<cv::Point> > contours_poly(contours.size());
+                std::vector<cv::Rect> boundRect(contours.size());
+                std::vector<cv::Point2f>centers(contours.size());
+                std::vector<float>radius(contours.size());
+
+                for(size_t i = 0; i < contours.size(); i++) {
+                    // Approximates a curve/polygon with another curve/polygon
+                    cv::approxPolyDP(contours[i], contours_poly[i], 3, true);
+                    // Rectangle shape to be drawn on image where cone appears
+                    boundRect[i] = cv::boundingRect(contours_poly[i]);
+                    // Circle shape to be drawn on image where cone appears
+                    cv::minEnclosingCircle(contours_poly[i], centers[i], radius[i]);
+                }
+
+                // Final image with outlines and targetting rectangles/circles
+                cv::Mat drawing = cv::Mat::zeros(canny_output.size(), CV_8UC3);
+                
+                //Drawing the contours of the cones and rectangles/circles over them IN DISCO COLOURS!
+                for(size_t i = 0; i< contours.size(); i++) {
+                    cv::Scalar color = cv::Scalar(rng.uniform(0, 256), rng.uniform(0,256), rng.uniform(0,256));
+                    cv::drawContours(drawing, contours_poly, (int)i, color);
+                    cv::rectangle(drawing, boundRect[i].tl(), boundRect[i].br(), color, 2);
+                    cv::circle(drawing, centers[i], (int)radius[i], color, 2);
+                }
+
+                // Show window with the disco outlined cones
+                cv::imshow("Contours", drawing);
+
+                // End of pasted code
 
                 // Showing the color-space image
                 cv::imshow("Color-Space Image", imgColorSpace);
