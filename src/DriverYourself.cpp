@@ -69,6 +69,23 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
+            // Create trackbars (sliders) window
+            cv::namedWindow("Inspector", CV_WINDOW_AUTOSIZE);
+            int minH{0};
+            int maxH{179}; // 179 is the max value of the slider
+            cvCreateTrackbar("Hue (min)", "Inspector", &minH, 179);
+            cvCreateTrackbar("Hue (max)", "Inspector", &maxH, 179);
+
+            int minS{0};
+            int maxS{255};
+            cvCreateTrackbar("Sat (min)", "Inspector", &minS, 255);
+            cvCreateTrackbar("Sat (max)", "Inspector", &maxS, 255);
+
+            int minV{0};
+            int maxV{255};
+            cvCreateTrackbar("Val (min)", "Inspector", &minV, 255);
+            cvCreateTrackbar("Val (max)", "Inspector", &maxV, 255);
+
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
@@ -103,13 +120,28 @@ int32_t main(int32_t argc, char **argv) {
                 cv::putText(img, ss.str(), cv::Point(0,25), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
                 cv::putText(img, ss1.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
                 // Example: Draw a red rectangle and display image.
-                cv::rectangle(img, cv::Point(50, 50), cv::Point(100, 100), cv::Scalar(0,0,255));
+                //cv::rectangle(img, cv::Point(50, 50), cv::Point(100, 100), cv::Scalar(0,0,255));
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
                 {
                     std::lock_guard<std::mutex> lck(gsrMutex);
                     std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
                 }
+
+                // Creating a Mat object for the HSV image
+                cv::Mat imgHSV;
+                // Converting the RGB image to an HSV image
+                cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
+
+                // Creating a Mat object for the color space
+                cv::Mat imgColorSpace;
+                // Checking that the HSV image is within the range, filtering out the desired colors, and displaying it
+                cv::inRange(imgHSV, cv::Scalar(minH, minS, minV), cv::Scalar(maxH, maxS, maxV), imgColorSpace);
+
+                // Showing the color-space image
+                cv::imshow("Color-Space Image", imgColorSpace);
+                // Display the image from the shared memory on the screen
+                cv::imshow(sharedMemory->name().c_str(), img);
 
                 // Display image on your screen.
                 if (VERBOSE) {
