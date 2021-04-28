@@ -19,18 +19,16 @@
 #include "cluon-complete.hpp"
 // Include the OpenDLV Standard Message Set that contains messages that are usually exchanged for automotive or robotic applications 
 #include "opendlv-standard-message-set.hpp"
-
 // Include the GUI and image processing header files from OpenCV
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/imgcodecs.hpp>
+//Include header from std library
+#include <iostream>
 #include <sstream>
 
-#include <opencv2/core/core.hpp>
-
-#include <iostream>
-
-#include <opencv2/imgcodecs.hpp>
-
+//Define section
 #define YMINH 19
 #define YMAXH 30  
 #define YMINS 50
@@ -46,7 +44,7 @@
 #define BMAXV 215 // 255 //215
 #define THRESH 100 // Sets a threshold for the Canny algo
 
-
+//Function declarations
 void contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector<std::vector<cv::Point>> contours_color, cv::Scalar color);
 std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min, cv::Scalar max);
 std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> boundRect);
@@ -95,7 +93,6 @@ int32_t main(int32_t argc, char **argv) {
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
 
-
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
@@ -115,7 +112,7 @@ int32_t main(int32_t argc, char **argv) {
                 time_t sample_time_stamp = cluon::time::toMicroseconds(sharedMemory->getTimeStamp().second);
                 sharedMemory->unlock();
 
-                // TODO: Do something with the frame.
+                // Processing the frame.
                 time_t time_in_microsec = cluon::time::now().seconds();
                 struct tm *p = gmtime(&time_in_microsec);
                 std::stringstream ss, ss1;
@@ -147,21 +144,17 @@ int32_t main(int32_t argc, char **argv) {
                 std::vector<std::vector<cv::Point>> contours_blue = contourFilter(imgHSV, cv::Scalar(BMINH, BMINS, BMINV), cv::Scalar(BMAXH, BMAXS, BMAXV));
 
                 // Creating arrays to hold data
-                std::vector<cv::Rect> boundRect_blue(contours_blue.size()); 
-                std::vector<cv::Rect> boundRect_yellow(contours_yellow.size());
+                std::vector<cv::Rect> boundRect_blue(contours_blue.size()),boundRect_yellow(contours_yellow.size());
 
-                boundRect_yellow = findBoundingBox(contours_yellow, boundRect_yellow);    
-                boundRect_blue = findBoundingBox(contours_blue, boundRect_blue); 
+                boundRect_yellow = findBoundingBox(contours_yellow, boundRect_yellow);
+                boundRect_blue = findBoundingBox(contours_blue, boundRect_blue);
 
                 // Final image with outlines and targetting rectangles/circles
                 cv::Mat drawing = cv::Mat::zeros(img.size(), CV_8UC3);
-                
-                cv::Scalar color_y = cv::Scalar(0, 255, 255); // Yellow
-                cv::Scalar color_b = cv::Scalar(255, 0, 0); // Blue
 
                 //Drawing rectangles over the cones in relevant colors
-                contourDraw(drawing, boundRect_yellow, contours_yellow, color_y);
-                contourDraw(drawing, boundRect_blue, contours_blue, color_b);
+                contourDraw(drawing, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
+                contourDraw(drawing, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue
 
                 // Show window with the disco outlined cones
                 cv::imshow("Contours", drawing);
@@ -191,13 +184,10 @@ void contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector
 
 // Method returns the contours of the masked shapes filtered by the desired color
 std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min, cv::Scalar max) {
-    // Creating a Mat object for the color space
-    cv::Mat imgColorSpace;
+    // Creating a Mat object for the color space and output Mat for the contour finder
+    cv::Mat imgColorSpace, canny_output;
     // Checking that the HSV image is within the range, filtering out the desired colors, and displaying it
     cv::inRange(imgHSV, min, max, imgColorSpace);
-
-    // Output Mat for the contour finder
-    cv::Mat canny_output;
     // Input the color mask, output object, threshold number and thresh*2 (why?)
     cv::Canny(imgColorSpace, canny_output, THRESH, THRESH*2);
     // Output for the contours
@@ -210,7 +200,6 @@ std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min
 
 // Method finds the bounding boxes of the contour of color filtered objects
 std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> boundRect) {
-
     std::vector<std::vector<cv::Point>> contours_poly(contours.size());
 
     for(size_t i = 0; i < contours.size(); i++) {
