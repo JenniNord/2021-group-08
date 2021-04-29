@@ -1,13 +1,34 @@
 # Group 8
 
 ## Requirements
-* Ubuntu 20.X
+* Ubuntu 18.X
 * Docker 20.10.X
 * Docker-compose 1.28.X
 * g++ 9.3.X
 * Git
 
 ## Set-up
+### Docker Build & Run
+1. In a terminal, change to the directory with the downloaded recording files
+2. In the same terminal, run opendlv-vehicle-view
+   1. `docker run --rm --init --net=host --name=opendlv-vehicle-view -v $PWD:/opt/vehicle-view/recordings -v /var/run/docker.sock:/var/run/docker.sock -p 8081:8081 chalmersrevere/opendlv-vehicle-view-multi:v0.0.60`
+3. Open opendlv-vehicle-view in Chrome & select a recording to play
+   1. `http://localhost:8081`
+4. In a new terminal, enable access to the GUI
+   1. `xhost +`
+5. In the same terminal, run the h264decoder
+   1. `docker run --rm -ti --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp:/tmp h264decoder:v0.0.4 --cid=253 --name=img`
+6. Play the recording (if you haven't already) to add data to the shared memory
+7. In a new terminal, clone repository into a directory of your choosing using SSH
+   1. `git clone git@git.chalmers.se:courses/dit638/students/2021-group-08.git`
+8. In the same terminal, change directory to the repository
+   1. `cd 2021-group-08`
+9. In the same terminal, build the repository
+   1. `docker build -f Dockerfile -t driveryourself:latest .`
+10. In the same terminal, run DriverYourself & play the recording in Chrome
+   1. `docker run --rm -ti --net=host --ipc=host -e DISPLAY=$DISPLAY -v /tmp:/tmp driveryourself:latest --cid=253 --name=img --width=640 --height=480 --verbose`
+
+### Manual Build
 1. Clone repository into a directory of your choosing using SSH
 `git clone git@git.chalmers.se:courses/dit638/students/2021-group-08.git`
 2. Change directory to the repository
@@ -30,9 +51,10 @@
 3. Create new branch for new feature
    1. Only functioning code in master branch
    2. Code Review: Team member with least possible involvement reviews committed code for new feature
-4. Write unit test for new feature before committing
+4. Write unit test for new feature before creating merge request
+   1. Those responsible for the feature will write the unit tests
 5. Update corresponding Trello card with new status
-6. Features will be merged into a branch when they are completed
+6. Features will be merged into a branch when they are completed & CI passes
    1. At least one member approves of the completed feature
    2. Rebasing from master will be used when needed
 
