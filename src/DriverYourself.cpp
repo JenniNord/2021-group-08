@@ -30,24 +30,24 @@
 
 #include <opencv2/core/types.hpp>
 
-//Define section
+// Define section
 #define YMINH 19
 #define YMAXH 30  
-#define YMINS 50
+#define YMINS 0     // 50
 #define YMAXS 255
 #define YMINV 99
 #define YMAXV 255
 
-#define BMINH 50 // 102 // OR 50
-#define BMAXH 145 // 135 // 145
-#define BMINS 95 // 64 // 95
-#define BMAXS 200 // 255 // 200
-#define BMINV 42 // 51 //42
-#define BMAXV 215 // 255 //215
+#define BMINH 74    // 50    // 102  // OR 50
+#define BMAXH 133   // 145   // 135  // 145
+#define BMINS 91    // 95    // 64   // 95
+#define BMAXS 255   // 200   // 255  // 200
+#define BMINV 40    // 42    // 51   // 42
+#define BMAXV 216   // 215   // 255  // 215
 
 #define THRESH 100 // Sets a threshold for the Canny algo
 
-//Function declarations
+// Function declarations
 void contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector<std::vector<cv::Point>> contours_color, cv::Scalar color);
 std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min, cv::Scalar max);
 std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> boundRect);
@@ -96,7 +96,7 @@ int32_t main(int32_t argc, char **argv) {
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
-
+            
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
@@ -165,7 +165,6 @@ int32_t main(int32_t argc, char **argv) {
 
                 // Show window with the outlined cones
                 cv::imshow("Bounding Boxes", croppedImgOriginalColor);
-                // cv::imshow("Cropped", croppedImg);
                 
                 // Display the image from the shared memory on the screen
                 cv::imshow(sharedMemory->name().c_str(), img);
@@ -221,6 +220,7 @@ std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contou
 }
 
 // Method filters noise around the cones
+// Referenced from: https://www.opencv-srf.com/2010/09/object-detection-using-color-separation.html
 void filtering(cv::Mat imgThresh) {
     // Removing small objects in foreground with an elliptic shape
     cv::erode(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8)));
