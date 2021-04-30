@@ -28,26 +28,30 @@
 #include <iostream>
 #include <sstream>
 
-//Define section
+#include <opencv2/core/types.hpp>
+
+// Define section
 #define YMINH 19
 #define YMAXH 30  
-#define YMINS 50
+#define YMINS 0     // 50
 #define YMAXS 255
 #define YMINV 99
 #define YMAXV 255
 
-#define BMINH 50 // 102 // OR 50
-#define BMAXH 145 // 135 // 145
-#define BMINS 95 // 64 // 95
-#define BMAXS 200 // 255 // 200
-#define BMINV 42 // 51 //42
-#define BMAXV 215 // 255 //215
+#define BMINH 74    // 50    // 102  // OR 50
+#define BMAXH 133   // 145   // 135  // 145
+#define BMINS 91    // 95    // 64   // 95
+#define BMAXS 255   // 200   // 255  // 200
+#define BMINV 40    // 42    // 51   // 42
+#define BMAXV 216   // 215   // 255  // 215
+
 #define THRESH 100 // Sets a threshold for the Canny algo
 
-//Function declarations
+// Function declarations
 void contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector<std::vector<cv::Point>> contours_color, cv::Scalar color);
 std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min, cv::Scalar max);
 std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> boundRect);
+void filtering(cv::Mat imgThresh);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -92,7 +96,7 @@ int32_t main(int32_t argc, char **argv) {
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
-
+            
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image.
@@ -139,9 +143,15 @@ int32_t main(int32_t argc, char **argv) {
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
+                cv::Rect roi(0, 260, 640, 220);
+                cv::Mat croppedImg = imgHSV(roi);
+                cv::Mat croppedImgOriginalColor = img(roi);
+
                 // Code adapted (line 146-166) from thresh_callback function found at https://docs.opencv.org/3.4/da/d0c/tutorial_bounding_rects_circles.html 
-                std::vector<std::vector<cv::Point>> contours_yellow = contourFilter(imgHSV, cv::Scalar(YMINH, YMINS, YMINV), cv::Scalar(YMAXH, YMAXS, YMAXV));
-                std::vector<std::vector<cv::Point>> contours_blue = contourFilter(imgHSV, cv::Scalar(BMINH, BMINS, BMINV), cv::Scalar(BMAXH, BMAXS, BMAXV));
+                std::vector<std::vector<cv::Point>> contours_yellow = contourFilter(croppedImg, cv::Scalar(YMINH, YMINS, YMINV), cv::Scalar(YMAXH, YMAXS, YMAXV));
+                std::vector<std::vector<cv::Point>> contours_blue = contourFilter(croppedImg, cv::Scalar(BMINH, BMINS, BMINV), cv::Scalar(BMAXH, BMAXS, BMAXV));
+
+                std::vector<std::vector<cv::Point>> contours_yellow_filtered;
 
                 // Creating arrays to hold data
                 std::vector<cv::Rect> boundRect_blue(contours_blue.size()),boundRect_yellow(contours_yellow.size());
@@ -149,15 +159,12 @@ int32_t main(int32_t argc, char **argv) {
                 boundRect_yellow = findBoundingBox(contours_yellow, boundRect_yellow);
                 boundRect_blue = findBoundingBox(contours_blue, boundRect_blue);
 
-                // Final image with outlines and targetting rectangles/circles
-                cv::Mat drawing = cv::Mat::zeros(img.size(), CV_8UC3);
+                // Drawing rectangles over the cones in relevant colors
+                contourDraw(croppedImgOriginalColor, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
+                contourDraw(croppedImgOriginalColor, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue
 
-                //Drawing rectangles over the cones in relevant colors
-                contourDraw(drawing, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
-                contourDraw(drawing, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue
-
-                // Show window with the disco outlined cones
-                cv::imshow("Contours", drawing);
+                // Show window with the outlined cones
+                cv::imshow("Bounding Boxes", croppedImgOriginalColor);
                 
                 // Display the image from the shared memory on the screen
                 cv::imshow(sharedMemory->name().c_str(), img);
@@ -188,6 +195,7 @@ std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min
     cv::Mat imgColorSpace, canny_output;
     // Checking that the HSV image is within the range, filtering out the desired colors, and displaying it
     cv::inRange(imgHSV, min, max, imgColorSpace);
+    filtering(imgColorSpace);
     // Input the color mask, output object, threshold number and thresh*2 (why?)
     cv::Canny(imgColorSpace, canny_output, THRESH, THRESH*2);
     // Output for the contours
@@ -209,4 +217,15 @@ std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contou
         boundRect[i] = cv::boundingRect(contours_poly[i]);
     }
     return boundRect;
+}
+
+// Method filters noise around the cones
+// Referenced from: https://www.opencv-srf.com/2010/09/object-detection-using-color-separation.html
+void filtering(cv::Mat imgThresh) {
+    // Removing small objects in foreground with an elliptic shape
+    cv::erode(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8)));
+    cv::dilate(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(8, 8)));
+    // Filling small holes in the foreground with an elliptic shape
+    cv::dilate(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)));
+    cv::erode(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(7, 7)));
 }
