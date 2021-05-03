@@ -8,7 +8,7 @@
 // Method draws rectangles over the contours found
 void ObjectDetection::contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector<std::vector<cv::Point>> contours_color, cv::Scalar color){
     //Drawing rectangles over the contours of the detected shapes in yellow/blue
-    for(unsigned long i = 1; i < contours_color.size(); i++) {
+    for(unsigned long i = 1; i <= contours_color.size(); i++) {
         cv::rectangle(image, shapeBoundary[i].tl(), shapeBoundary[i].br(), color, 1);
     }
 }
