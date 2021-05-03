@@ -127,16 +127,8 @@ int32_t main(int32_t argc, char **argv) {
                 sharedMemory->unlock();
 
                 // Processing the frame.
-                time_t time_in_microsec = cluon::time::now().seconds();
-                struct tm *p = gmtime(&time_in_microsec);
                 std::stringstream ss, ss1;
-                ss  << "Now: " << 1900+p->tm_year
-                    << "-" << p->tm_mon/10 << p->tm_mon%10
-                    << "-" << p->tm_mday/10 << p->tm_mday%10
-                    << "T" << p->tm_hour/10 << p->tm_hour%10
-                    << ":" << p->tm_min/10 << p->tm_min%10
-                    << ":" << p->tm_sec/10 << p->tm_sec %10
-                    << "Z; ts: " << sample_time_stamp << "; Group 8;";
+                ss  << "Group 8; ts: " << sample_time_stamp << ";";
                 ss1 << "GroundSteeringRequest: " << gsr.groundSteering() << ";";
                 cv::putText(img, ss.str(), cv::Point(0,25), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
                 cv::putText(img, ss1.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
