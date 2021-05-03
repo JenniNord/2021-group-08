@@ -29,6 +29,7 @@
 #include <sstream>
 
 #include <opencv2/core/types.hpp>
+#include <opencv2/core/utility.hpp>
 
 // Define section
 #define YMINH 19
@@ -52,6 +53,7 @@ void contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector
 std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min, cv::Scalar max);
 std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> boundRect);
 void filtering(cv::Mat imgThresh);
+void getFPS(cv::TickMeter tm, int* number_of_frames, int32_t* fps);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -96,9 +98,17 @@ int32_t main(int32_t argc, char **argv) {
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
+
+            // FPS variables
+            int32_t fps = 0;
+            cv::TickMeter tm;
+            int number_of_frames = 0;
             
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
+                // Start time meter for fps counter
+                tm.start();
+
                 // OpenCV data structure to hold an image.
                 cv::Mat img;
 
@@ -112,7 +122,7 @@ int32_t main(int32_t argc, char **argv) {
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
                     img = wrapped.clone();
                 }
-                // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
+                // Checking the sampleTimePoint when the current frame was captured.
                 time_t sample_time_stamp = cluon::time::toMicroseconds(sharedMemory->getTimeStamp().second);
                 sharedMemory->unlock();
 
@@ -162,6 +172,12 @@ int32_t main(int32_t argc, char **argv) {
                 // Drawing rectangles over the cones in relevant colors
                 contourDraw(croppedImgOriginalColor, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
                 contourDraw(croppedImgOriginalColor, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue
+
+                // Get FPS
+                getFPS(tm, &number_of_frames, &fps);
+
+                // Display FPS on main image
+                cv::putText(img, std::to_string(fps), cv::Point(10,60), cv::FONT_HERSHEY_COMPLEX_SMALL, 1, CV_RGB(0, 255, 0));
 
                 // Show window with the outlined cones
                 cv::imshow("Bounding Boxes", croppedImgOriginalColor);
@@ -228,4 +244,19 @@ void filtering(cv::Mat imgThresh) {
     // Filling small holes in the foreground with an elliptic shape
     cv::dilate(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)));
     cv::erode(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(7, 7)));
+}
+
+// Calculates FPS based on number of iterations/frames the program can process per second
+void getFPS(cv::TickMeter tm, int* number_of_frames, int32_t* fps) {
+    // Increment the number of frames/loop iterations
+    *number_of_frames = *number_of_frames + 1;
+
+    // Calculate FPS every 10 frames/iterations
+    if (*number_of_frames == 10) {
+        tm.stop();
+        double current_time = tm.getTimeSec();
+        *fps = (int) (*number_of_frames / current_time);
+        tm.reset();
+        *number_of_frames = 0;
+    }
 }
