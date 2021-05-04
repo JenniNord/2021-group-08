@@ -140,6 +140,9 @@ int32_t main(int32_t argc, char **argv) {
                 // Creating a Mat object for the HSV image
                 cv::Mat imgHSV;
 
+                // Initializing the debug window with a set size
+                cv::Mat debugWindow(512, 512, CV_8UC3, cv::Scalar(0));
+
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
@@ -161,17 +164,23 @@ int32_t main(int32_t argc, char **argv) {
 
                 // Drawing rectangles over the cones in relevant colors
                 contourDraw(croppedImgOriginalColor, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
-                contourDraw(croppedImgOriginalColor, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue
+                contourDraw(croppedImgOriginalColor, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue           
+                
+                // Putting the text on the debug window
+                cv::putText(debugWindow,                           // Target image
+                            "DriverYourself features: ",           // Text to be printed in the window
+                            cv::Point(10, debugWindow.rows - 100), // Position in the window
+                            cv::FONT_HERSHEY_PLAIN, 1.0,
+                            CV_RGB(255, 255, 255),
+                            2);
 
                 // Show window with the outlined cones
                 cv::imshow("Bounding Boxes", croppedImgOriginalColor);
                 
-                // Display the image from the shared memory on the screen
-                cv::imshow(sharedMemory->name().c_str(), img);
-
                 // Display image on your screen.
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
+                    cv::imshow("Debug Window", debugWindow);
                     cv::waitKey(1);
                 }
             }
