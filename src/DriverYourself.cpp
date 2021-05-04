@@ -52,6 +52,7 @@ void contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector
 std::vector<std::vector<cv::Point>> contourFilter(cv::Mat imgHSV, cv::Scalar min, cv::Scalar max);
 std::vector<cv::Rect> findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> boundRect);
 void filtering(cv::Mat imgThresh);
+std::vector<cv::Point> objectCenterCoordinates(const std::vector<cv::Rect>& objectRects);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -99,8 +100,8 @@ int32_t main(int32_t argc, char **argv) {
             
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
-                // OpenCV data structure to hold an image.
-                cv::Mat img;
+                // OpenCV data structure to hold an image & Creating a Mat object for the HSV image
+                cv::Mat img, imgHSV;
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -116,30 +117,6 @@ int32_t main(int32_t argc, char **argv) {
                 time_t sample_time_stamp = cluon::time::toMicroseconds(sharedMemory->getTimeStamp().second);
                 sharedMemory->unlock();
 
-                // Processing the frame.
-                time_t time_in_microsec = cluon::time::now().seconds();
-                struct tm *p = gmtime(&time_in_microsec);
-                std::stringstream ss, ss1;
-                ss  << "Now: " << 1900+p->tm_year
-                    << "-" << p->tm_mon/10 << p->tm_mon%10
-                    << "-" << p->tm_mday/10 << p->tm_mday%10
-                    << "T" << p->tm_hour/10 << p->tm_hour%10
-                    << ":" << p->tm_min/10 << p->tm_min%10
-                    << ":" << p->tm_sec/10 << p->tm_sec %10
-                    << "Z; ts: " << sample_time_stamp << "; Group 8;";
-                ss1 << "GroundSteeringRequest: " << gsr.groundSteering() << ";";
-                cv::putText(img, ss.str(), cv::Point(0,25), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
-                cv::putText(img, ss1.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
-
-                // If you want to access the latest received ground steering, don't forget to lock the mutex:
-                {
-                    std::lock_guard<std::mutex> lck(gsrMutex);
-                    std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
-                }
-
-                // Creating a Mat object for the HSV image
-                cv::Mat imgHSV;
-
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
@@ -147,11 +124,9 @@ int32_t main(int32_t argc, char **argv) {
                 cv::Mat croppedImg = imgHSV(roi);
                 cv::Mat croppedImgOriginalColor = img(roi);
 
-                // Code adapted (line 146-166) from thresh_callback function found at https://docs.opencv.org/3.4/da/d0c/tutorial_bounding_rects_circles.html 
+                // Code adapted (line 146-166) from thresh_callback function found at https://docs.opencv.org/3.4/da/d0c/tutorial_bounding_rects_circles.html
                 std::vector<std::vector<cv::Point>> contours_yellow = contourFilter(croppedImg, cv::Scalar(YMINH, YMINS, YMINV), cv::Scalar(YMAXH, YMAXS, YMAXV));
                 std::vector<std::vector<cv::Point>> contours_blue = contourFilter(croppedImg, cv::Scalar(BMINH, BMINS, BMINV), cv::Scalar(BMAXH, BMAXS, BMAXV));
-
-                std::vector<std::vector<cv::Point>> contours_yellow_filtered;
 
                 // Creating arrays to hold data
                 std::vector<cv::Rect> boundRect_blue(contours_blue.size()),boundRect_yellow(contours_yellow.size());
@@ -162,6 +137,46 @@ int32_t main(int32_t argc, char **argv) {
                 // Drawing rectangles over the cones in relevant colors
                 contourDraw(croppedImgOriginalColor, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
                 contourDraw(croppedImgOriginalColor, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue
+
+                //Generate center coordinates for detected objects
+                std::vector<cv::Point> objectCoordinates_yellow = objectCenterCoordinates(boundRect_yellow);
+                std::vector<cv::Point> objectCoordinates_blue = objectCenterCoordinates(boundRect_blue);
+
+                // Processing the frame.
+                time_t time_in_microsec = cluon::time::now().seconds();
+                struct tm *p = gmtime(&time_in_microsec);
+
+                //Create string stream for manipulate message blocks
+                std::stringstream ss, gsrss, yellowCoordinatesString, blueCoordinatesString;
+
+                //Current time string
+                ss  << "Now: " << 1900+p->tm_year
+                    << "-" << p->tm_mon/10 << p->tm_mon%10
+                    << "-" << p->tm_mday/10 << p->tm_mday%10
+                    << "T" << p->tm_hour/10 << p->tm_hour%10
+                    << ":" << p->tm_min/10 << p->tm_min%10
+                    << ":" << p->tm_sec/10 << p->tm_sec %10
+                    << "Z; ts: " << sample_time_stamp << "; Group 8;";
+                cv::putText(img, ss.str(), cv::Point(0,25), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
+
+                //Ground steering request string
+                gsrss << "GroundSteeringRequest: " << gsr.groundSteering() << ";";
+                cv::putText(img, gsrss.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
+
+                //Detected objects center coordinates
+                yellowCoordinatesString << "Yellow objects: ";
+                for(cv::Point pt: objectCoordinates_yellow) { yellowCoordinatesString << "(" << pt.x << "," << pt.y << ") "; }
+                cv::putText(img, yellowCoordinatesString.str(), cv::Point(0,55), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
+
+                blueCoordinatesString << "Blue objects: ";
+                for(cv::Point pt: objectCoordinates_blue) { blueCoordinatesString << "(" << pt.x << "," << pt.y << ") "; }
+                cv::putText(img, blueCoordinatesString.str(), cv::Point(0,70), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
+
+                // If you want to access the latest received ground steering, don't forget to lock the mutex:
+                {
+                    std::lock_guard<std::mutex> lck(gsrMutex);
+                    std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
+                }
 
                 // Show window with the outlined cones
                 cv::imshow("Bounding Boxes", croppedImgOriginalColor);
@@ -184,7 +199,7 @@ int32_t main(int32_t argc, char **argv) {
 // Method draws rectangles over the contours found
 void contourDraw(cv::Mat image, std::vector<cv::Rect> shapeBoundary, std::vector<std::vector<cv::Point>> contours_color, cv::Scalar color) {
     //Drawing rectangles over the contours of the detected shapes in yellow/blue
-    for(size_t i = 0; i< contours_color.size(); i++) {
+    for(unsigned long i = 1; i <= contours_color.size(); i++) {
         cv::rectangle(image, shapeBoundary[i].tl(), shapeBoundary[i].br(), color, 1);
     }
 }
@@ -228,4 +243,10 @@ void filtering(cv::Mat imgThresh) {
     // Filling small holes in the foreground with an elliptic shape
     cv::dilate(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(5, 5)));
     cv::erode(imgThresh, imgThresh, getStructuringElement(cv::MORPH_ELLIPSE, cv::Size(7, 7)));
+}
+
+std::vector<cv::Point> objectCenterCoordinates(const std::vector<cv::Rect>& objectRects){
+    std::vector<cv::Point> objectCoordinates;
+    for(const cv::Rect& rc : objectRects){ objectCoordinates.emplace_back(cv::Point(rc.tl().x + rc.width / 2, rc.tl().y + rc.height / 2)); }
+    return objectCoordinates;
 }
