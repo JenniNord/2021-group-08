@@ -166,21 +166,10 @@ int32_t main(int32_t argc, char **argv) {
                 contourDraw(croppedImgOriginalColor, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
                 contourDraw(croppedImgOriginalColor, boundRect_blue, contours_blue, cv::Scalar(255, 0, 0));//Blue           
                 
-                // Putting the text on the debug window
-                cv::putText(debugWindow,                           // Target image
-                            "DriverYourself features: ",           // Text to be printed in the window
-                            cv::Point(10, debugWindow.rows - 100), // Position in the window
-                            cv::FONT_HERSHEY_PLAIN, 1.0,
-                            CV_RGB(255, 255, 255),
-                            2);
-
-                // Show window with the outlined cones
-                cv::imshow("Bounding Boxes", croppedImgOriginalColor);
-                
-                // Display image on your screen.
+                // Display image windows on the screen
                 if (VERBOSE) {
+                    cv::imshow("ROI", croppedImgOriginalColor);
                     cv::imshow(sharedMemory->name().c_str(), img);
-                    cv::imshow("Debug Window", debugWindow);
                     cv::waitKey(1);
                 }
             }
