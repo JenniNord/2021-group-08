@@ -92,7 +92,7 @@ int32_t main(int32_t argc, char **argv) {
                 // https://github.com/chrberger/libcluon/blob/master/libcluon/testsuites/TestEnvelopeConverter.cpp#L31-L40
                 std::lock_guard<std::mutex> lck(gsrMutex);
                 gsr = cluon::extractMessage<opendlv::proxy::GroundSteeringRequest>(std::move(env));
-                std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
+                //std::cout << "lambda: groundSteering = " << gsr.groundSteering() << std::endl;
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
@@ -132,10 +132,10 @@ int32_t main(int32_t argc, char **argv) {
                 cv::putText(img, ss1.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
 
                 // If you want to access the latest received ground steering, don't forget to lock the mutex:
-                {
+                /*{
                     std::lock_guard<std::mutex> lck(gsrMutex);
                     std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
-                }
+                }*/
 
                 // Creating a Mat object for the HSV image
                 cv::Mat imgHSV;
@@ -168,6 +168,10 @@ int32_t main(int32_t argc, char **argv) {
                 
                 // Display the image from the shared memory on the screen
                 cv::imshow(sharedMemory->name().c_str(), img);
+
+                // Prints diagnostic steering algo data which can be extracted into a CSV file
+                // TODO: replace gsr.groundSteering() with result from steering algo
+                std::cout << "group_08;" << sample_time_stamp << ";" << gsr.groundSteering() << std::endl;
 
                 // Display image on your screen.
                 if (VERBOSE) {
