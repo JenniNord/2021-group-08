@@ -29,6 +29,8 @@
 #include <sstream>
 //Include include
 #include "../modules/ObjectDetection/include/ObjectDetection.hpp"
+#include <opencv2/core/types.hpp>
+#include <opencv2/core/utility.hpp>
 
 // Define section
 #define YMINH 19
@@ -44,6 +46,9 @@
 #define BMAXS 255   // 200   // 255  // 200
 #define BMINV 40    // 42    // 51   // 42
 #define BMAXV 216   // 215   // 255  // 215
+
+// Function declarations
+void getFPS(cv::TickMeter tm, int* number_of_frames, int32_t* fps);
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -88,12 +93,19 @@ int32_t main(int32_t argc, char **argv) {
             };
 
             od4.dataTrigger(opendlv::proxy::GroundSteeringRequest::ID(), onGroundSteeringRequest);
+
+            // FPS variables
+            int32_t fps = 0;
+            cv::TickMeter tm;
+            int number_of_frames = 0;
             
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image & Creating a Mat object for the HSV image
                 cv::Mat img, imgHSV;
                 ObjectDetection od;
+                // Start time meter for fps counter
+                tm.start();
 
                 // Wait for a notification of a new frame.
                 sharedMemory->wait();
@@ -105,7 +117,7 @@ int32_t main(int32_t argc, char **argv) {
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
                     img = wrapped.clone();
                 }
-                // TODO: Here, you can add some code to check the sampleTimePoint when the current frame was captured.
+                // Checking the sampleTimePoint when the current frame was captured.
                 time_t sample_time_stamp = cluon::time::toMicroseconds(sharedMemory->getTimeStamp().second);
                 sharedMemory->unlock();
 
@@ -170,6 +182,11 @@ int32_t main(int32_t argc, char **argv) {
                     std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
                 }
 
+                // Get FPS
+                getFPS(tm, &number_of_frames, &fps);
+                // Display FPS on windows
+                cv::putText(img, std::to_string(fps), cv::Point(10, 100), cv::FONT_HERSHEY_COMPLEX_SMALL, 1, CV_RGB(0, 255, 0));
+
                 // Show window with the outlined cones
                 cv::imshow("Bounding Boxes", croppedImgOriginalColor);
                 
@@ -186,4 +203,19 @@ int32_t main(int32_t argc, char **argv) {
         retCode = 0;
     }
     return retCode;
+}
+
+// Calculates FPS based on number of iterations/frames the program can process per second
+void getFPS(cv::TickMeter tm, int* number_of_frames, int32_t* fps) {
+    // Increment the number of frames/loop iterations
+    *number_of_frames = *number_of_frames + 1;
+
+    // Calculate FPS every 10 frames/iterations
+    if (*number_of_frames == 10) {
+        tm.stop();
+        double current_time = tm.getTimeSec();
+        *fps = (int) (*number_of_frames / current_time);
+        tm.reset();
+        *number_of_frames = 0;
+    }
 }
