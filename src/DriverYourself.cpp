@@ -170,19 +170,14 @@ int32_t main(int32_t argc, char **argv) {
                     std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
                 }*/
 
-                // Show window with the outlined cones
-                cv::imshow("Bounding Boxes", croppedImgOriginalColor);
-                
-                // Display the image from the shared memory on the screen
-                cv::imshow(sharedMemory->name().c_str(), img);
-
                 // Prints diagnostic steering algo data which can be extracted into a CSV file
                 // TODO: replace gsr.groundSteering() with result from steering algo
                 std::cout << "group_08;" << sample_time_stamp << ";" << gsr.groundSteering() << std::endl;
 
-                // Display image on your screen.
+                // Display image windows on the screen
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
+                    cv::imshow("Bounding Boxes", croppedImgOriginalColor);
                     cv::waitKey(1);
                 }
             }
