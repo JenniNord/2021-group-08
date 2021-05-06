@@ -93,12 +93,20 @@ set(LIBRARIES ${LIBRARIES} ${OpenCV_LIBS})
 
 ################################################################################
 # Create executable.
-add_executable(${PROJECT_NAME} ${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp)
+add_executable(
+        ${PROJECT_NAME}
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp
+        modules/ObjectDetection/src/ObjectDetection.cpp )
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
 # Add dependency to OpenDLV Standard Message Set.
 add_custom_target(generate_opendlv_standard_message_set_hpp DEPENDS ${CMAKE_BINARY_DIR}/opendlv-standard-message-set.hpp)
 add_dependencies(${PROJECT_NAME} generate_opendlv_standard_message_set_hpp)
+
+# Create test build target
+enable_testing()
+add_executable(TestObjectDetection modules/ObjectDetection/test/ObjectDetectionTest.cpp modules/ObjectDetection/test/CatchMain.cpp)
+add_test(NAME TestObjectDetection COMMAND TestObjectDetection)
 
 ################################################################################
 # Install executable.
