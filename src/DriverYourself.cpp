@@ -169,11 +169,10 @@ int32_t main(int32_t argc, char **argv) {
                     std::lock_guard<std::mutex> lck(gsrMutex);
                     std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
                 }
-               
-                // Display image on your screen.
+
+                // Display image windows on the screen
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
-                    // Show window with the outlined cones
                     cv::imshow("Bounding Boxes", croppedImgOriginalColor);
                     cv::waitKey(1);
                 }
