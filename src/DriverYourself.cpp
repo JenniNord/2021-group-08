@@ -140,9 +140,6 @@ int32_t main(int32_t argc, char **argv) {
                 // Creating a Mat object for the HSV image
                 cv::Mat imgHSV;
 
-                // Initializing the debug window with a set size
-                cv::Mat debugWindow(512, 512, CV_8UC3, cv::Scalar(0));
-
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
