@@ -158,8 +158,9 @@ int32_t main(int32_t argc, char **argv) {
                 std::vector<cv::Point> objectCoordinates_yellow = od.objectCenterCoordinates(boundRect_yellow);
                 std::vector<cv::Point> objectCoordinates_blue = od.objectCenterCoordinates(boundRect_blue);
 
-                if((detectedDirection==-1)&&(!objectCoordinates_yellow.empty()|!objectCoordinates_blue.empty())){
+                if((detectedDirection==-1)&&(!objectCoordinates_yellow.empty()&&!objectCoordinates_blue.empty())){
                     detectedDirection = (objectCoordinates_yellow.begin()->x)<320 || (boundRect_blue.begin()->x)>320;
+
                     std::cout << detectedDirection << std::endl;
                 }
 
@@ -206,11 +207,15 @@ int32_t main(int32_t argc, char **argv) {
 
                 // Prints diagnostic steering algo data which can be extracted into a CSV file
                 // TODO: replace gsr.groundSteering() with result from steering algo
-                if(objectCoordinates_blue.empty()&&objectCoordinates_yellow.empty()){
+                if((objectCoordinates_blue.empty()&&objectCoordinates_yellow.empty()) || detectedDirection ==-1){
                     std::cout << "group_08;" << sample_time_stamp << ";-0" << std::endl;
-                }else{
+                }
+                else{
                     if(!objectCoordinates_blue.empty()){
-                        std::cout << "group_08;" << sample_time_stamp << ";" <<dp.steeringWheelDirection(detectedDirection, 1, objectCoordinates_blue.at(0), 640) << std::endl;
+                        std::cout << "Blue: group_08;" << sample_time_stamp << ";" <<dp.steeringWheelDirection(detectedDirection, 1, objectCoordinates_blue.at(0), 640) << std::endl;
+                    }
+                    else if(!objectCoordinates_yellow.empty()){
+                        std::cout << "Yellow: group_08;" << sample_time_stamp << ";" <<dp.steeringWheelDirection(detectedDirection, 0, objectCoordinates_yellow.at(0), 640) << std::endl;
                     }
                 }
 

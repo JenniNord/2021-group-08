@@ -1,5 +1,4 @@
 #include "../modules/DataProcessor//include/DataProcessor.hpp"
-#include "../../cone/include/cone.hpp"
 
 // Calculates FPS based on number of iterations/frames the program can process per second
 void DataProcessor::getFPS(cv::TickMeter tm, int *number_of_frames, int32_t *fps) {

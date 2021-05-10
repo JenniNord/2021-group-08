@@ -2,7 +2,6 @@
 #define DATAPROCESSOR
 
 #include <opencv2/core/utility.hpp>
-#include "../../cone/include/cone.hpp"
 
 class DataProcessor{
     public:
