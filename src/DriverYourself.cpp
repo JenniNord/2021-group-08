@@ -22,15 +22,13 @@
 // Include the GUI and image processing header files from OpenCV
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/core/types.hpp>
-//Include header from std library
-#include <iostream>
-#include <sstream>
-//Include include
-#include "../modules/ObjectDetection/include/ObjectDetection.hpp"
 #include <opencv2/core/types.hpp>
 #include <opencv2/core/utility.hpp>
+//Include header from std library
+#include <iostream>
+//Include modules
+#include "../modules/ObjectDetection/include/ObjectDetection.hpp"
+#include "../modules/DataProcessor/include/DataProcessor.hpp"
 
 // Define section
 #define YMINH 19
@@ -98,12 +96,16 @@ int32_t main(int32_t argc, char **argv) {
             int32_t fps = 0;
             cv::TickMeter tm;
             int number_of_frames = 0;
+            int detectedDirection = -1; //Not detected: -1
+                                          //Clockwise: 0
+                                          //Anti-clockwise: 1
             
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image & Creating a Mat object for the HSV image
                 cv::Mat img, imgHSV;
                 ObjectDetection od;
+                DataProcessor dp;
                 // Start time meter for fps counter
                 tm.start();
 
@@ -124,9 +126,19 @@ int32_t main(int32_t argc, char **argv) {
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
-                cv::Rect roi(0, 260, 640, 220);
-                cv::Mat croppedImg = imgHSV(roi);
-                cv::Mat croppedImgOriginalColor = img(roi);
+                cv::Mat croppedImg;
+                cv::Mat croppedImgOriginalColor;
+
+                if(detectedDirection == -1){
+                    cv::Rect roi(0, 260, 640, 220);//Wider cropped image
+                    croppedImg = imgHSV(roi);
+                    croppedImgOriginalColor= img(roi);
+                }
+                else {
+                    cv::Rect roi(150, 300, 350, 100);//Smaller cropped image
+                    croppedImg = imgHSV(roi);
+                    croppedImgOriginalColor= img(roi);
+                }
 
                 // Code adapted (line 146-166) from thresh_callback function found at https://docs.opencv.org/3.4/da/d0c/tutorial_bounding_rects_circles.html
                 std::vector<std::vector<cv::Point>> contours_yellow = od.contourFilter(croppedImg, cv::Scalar(YMINH, YMINS, YMINV), cv::Scalar(YMAXH, YMAXS, YMAXV));
@@ -145,6 +157,11 @@ int32_t main(int32_t argc, char **argv) {
                 //Generate center coordinates for detected objects
                 std::vector<cv::Point> objectCoordinates_yellow = od.objectCenterCoordinates(boundRect_yellow);
                 std::vector<cv::Point> objectCoordinates_blue = od.objectCenterCoordinates(boundRect_blue);
+
+                if((detectedDirection==-1)&&(!objectCoordinates_yellow.empty()|!objectCoordinates_blue.empty())){
+                    detectedDirection = (objectCoordinates_yellow.begin()->x)<320 || (boundRect_blue.begin()->x)>320;
+                    std::cout << detectedDirection << std::endl;
+                }
 
                 // Processing the frame.
                 time_t time_in_microsec = cluon::time::now().seconds();
@@ -183,13 +200,19 @@ int32_t main(int32_t argc, char **argv) {
                 }*/
 
                 // Get FPS
-                getFPS(tm, &number_of_frames, &fps);
+                dp.getFPS(tm, &number_of_frames, &fps);
                 // Display FPS on windows
                 cv::putText(img, std::to_string(fps), cv::Point(10, 100), cv::FONT_HERSHEY_COMPLEX_SMALL, 1, CV_RGB(0, 255, 0));
 
                 // Prints diagnostic steering algo data which can be extracted into a CSV file
                 // TODO: replace gsr.groundSteering() with result from steering algo
-                std::cout << "group_08;" << sample_time_stamp << ";" << gsr.groundSteering() << std::endl;
+                if(objectCoordinates_blue.empty()&&objectCoordinates_yellow.empty()){
+                    std::cout << "group_08;" << sample_time_stamp << ";-0" << std::endl;
+                }else{
+                    if(!objectCoordinates_blue.empty()){
+                        std::cout << "group_08;" << sample_time_stamp << ";" <<dp.steeringWheelDirection(detectedDirection, 1, objectCoordinates_blue.at(0), 640) << std::endl;
+                    }
+                }
 
                 // Display image windows on the screen
                 if (VERBOSE) {
@@ -202,19 +225,4 @@ int32_t main(int32_t argc, char **argv) {
         retCode = 0;
     }
     return retCode;
-}
-
-// Calculates FPS based on number of iterations/frames the program can process per second
-void getFPS(cv::TickMeter tm, int* number_of_frames, int32_t* fps) {
-    // Increment the number of frames/loop iterations
-    *number_of_frames = *number_of_frames + 1;
-
-    // Calculate FPS every 10 frames/iterations
-    if (*number_of_frames == 10) {
-        tm.stop();
-        double current_time = tm.getTimeSec();
-        *fps = (int) (*number_of_frames / current_time);
-        tm.reset();
-        *number_of_frames = 0;
-    }
 }

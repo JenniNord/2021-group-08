@@ -96,7 +96,8 @@ set(LIBRARIES ${LIBRARIES} ${OpenCV_LIBS})
 add_executable(
         ${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp
-        modules/ObjectDetection/src/ObjectDetection.cpp )
+        modules/ObjectDetection/src/ObjectDetection.cpp
+        modules/DataProcessor/src/DataProcessor.cpp)
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
 # Add dependency to OpenDLV Standard Message Set.
