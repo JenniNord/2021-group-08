@@ -45,9 +45,6 @@
 #define BMINV 40    // 42    // 51   // 42
 #define BMAXV 216   // 215   // 255  // 215
 
-// Function declarations
-void getFPS(cv::TickMeter tm, int* number_of_frames, int32_t* fps);
-
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
     // Parse the command line parameters as we require the user to specify some mandatory information on startup.
@@ -103,9 +100,13 @@ int32_t main(int32_t argc, char **argv) {
             // Endless loop; end the program by pressing Ctrl-C.
             while (od4.isRunning()) {
                 // OpenCV data structure to hold an image & Creating a Mat object for the HSV image
-                cv::Mat img, imgHSV;
+                cv::Mat img, imgHSV, croppedImg, croppedImgOriginalColor;
+                cv::Rect roi;
+                time_t sample_time_stamp;
+                float sample_gsa;
                 ObjectDetection od;
                 DataProcessor dp;
+
                 // Start time meter for fps counter
                 tm.start();
 
@@ -118,37 +119,33 @@ int32_t main(int32_t argc, char **argv) {
                     // Copy the pixels from the shared memory into our own data structure.
                     cv::Mat wrapped(HEIGHT, WIDTH, CV_8UC4, sharedMemory->data());
                     img = wrapped.clone();
+                    std::lock_guard<std::mutex> lck(gsrMutex); //Lock gsr mutex when record time stamp and received ground steering angle
+                    sample_time_stamp = cluon::time::toMicroseconds(sharedMemory->getTimeStamp().second);
+                    sample_gsa = gsr.groundSteering();
                 }
                 // Checking the sampleTimePoint when the current frame was captured.
-                time_t sample_time_stamp = cluon::time::toMicroseconds(sharedMemory->getTimeStamp().second);
                 sharedMemory->unlock();
 
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
-                cv::Mat croppedImg;
-                cv::Mat croppedImgOriginalColor;
-
-                if(detectedDirection == -1){
-                    cv::Rect roi(0, 260, 640, 220);//Wider cropped image
-                    croppedImg = imgHSV(roi);
-                    croppedImgOriginalColor= img(roi);
+                if(detectedDirection == -1) {
+                    roi = cv::Rect(0, 260, 640, 220);//Wider cropped image
                 }
                 else {
-                    cv::Rect roi(150, 300, 350, 100);//Smaller cropped image
-                    croppedImg = imgHSV(roi);
-                    croppedImgOriginalColor= img(roi);
+                    roi = cv::Rect(185, 315, 270, 80);//Smaller cropped image
                 }
+                croppedImg = imgHSV(roi);
+                croppedImgOriginalColor= img(roi);
 
                 // Code adapted (line 146-166) from thresh_callback function found at https://docs.opencv.org/3.4/da/d0c/tutorial_bounding_rects_circles.html
                 std::vector<std::vector<cv::Point>> contours_yellow = od.contourFilter(croppedImg, cv::Scalar(YMINH, YMINS, YMINV), cv::Scalar(YMAXH, YMAXS, YMAXV));
                 std::vector<std::vector<cv::Point>> contours_blue = od.contourFilter(croppedImg, cv::Scalar(BMINH, BMINS, BMINV), cv::Scalar(BMAXH, BMAXS, BMAXV));
 
-                // Creating arrays to hold data
+                //Hold bounding boxes data
                 std::vector<cv::Rect> boundRect_blue(contours_blue.size()),boundRect_yellow(contours_yellow.size());
-
-                boundRect_yellow = od.findBoundingBox(contours_yellow, boundRect_yellow);
-                boundRect_blue = od.findBoundingBox(contours_blue, boundRect_blue);
+                od.findBoundingBox(contours_yellow, boundRect_yellow);
+                od.findBoundingBox(contours_blue, boundRect_blue);
 
                 // Drawing rectangles over the cones in relevant colors
                 od.contourDraw(croppedImgOriginalColor, boundRect_yellow, contours_yellow, cv::Scalar(0, 255, 255));// Yellow
@@ -158,47 +155,30 @@ int32_t main(int32_t argc, char **argv) {
                 std::vector<cv::Point> objectCoordinates_yellow = od.objectCenterCoordinates(boundRect_yellow);
                 std::vector<cv::Point> objectCoordinates_blue = od.objectCenterCoordinates(boundRect_blue);
 
+                //Check if the direction is detected
                 if((detectedDirection==-1)&&(!objectCoordinates_yellow.empty()&&!objectCoordinates_blue.empty())){
                     detectedDirection = (objectCoordinates_yellow.begin()->x)<320 || (boundRect_blue.begin()->x)>320;
-
                     std::cout << detectedDirection << std::endl;
                 }
-
-                // Processing the frame.
-                time_t time_in_microsec = cluon::time::now().seconds();
-                struct tm *p = gmtime(&time_in_microsec);
 
                 //Create string stream for manipulate message blocks
                 std::stringstream ss, gsrss, yellowCoordinatesString, blueCoordinatesString;
 
-                //Current time string
-                ss  << "Now: " << 1900+p->tm_year
-                    << "-" << p->tm_mon/10 << p->tm_mon%10
-                    << "-" << p->tm_mday/10 << p->tm_mday%10
-                    << "T" << p->tm_hour/10 << p->tm_hour%10
-                    << ":" << p->tm_min/10 << p->tm_min%10
-                    << ":" << p->tm_sec/10 << p->tm_sec %10
-                    << "Z; ts: " << sample_time_stamp << "; Group 8;";
+                ss << "ts: " << sample_time_stamp << "; Group 8;";
                 cv::putText(img, ss.str(), cv::Point(0,25), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
 
                 //Ground steering request string
-                gsrss << "GroundSteeringRequest: " << gsr.groundSteering() << ";";
+                gsrss << "GroundSteeringRequest: " << sample_gsa << ";";
                 cv::putText(img, gsrss.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
 
                 //Detected objects center coordinates
                 yellowCoordinatesString << "Yellow objects: ";
-                for(cv::Point pt: objectCoordinates_yellow) { yellowCoordinatesString << "(" << pt.x << "," << pt.y << ") "; }
+                for(const cv::Point& pt: objectCoordinates_yellow) { yellowCoordinatesString << "(" << pt.x << "," << pt.y << ") "; }
                 cv::putText(img, yellowCoordinatesString.str(), cv::Point(0,55), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
 
                 blueCoordinatesString << "Blue objects: ";
-                for(cv::Point pt: objectCoordinates_blue) { blueCoordinatesString << "(" << pt.x << "," << pt.y << ") "; }
+                for(const cv::Point& pt: objectCoordinates_blue) { blueCoordinatesString << "(" << pt.x << "," << pt.y << ") "; }
                 cv::putText(img, blueCoordinatesString.str(), cv::Point(0,70), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
-
-                // If you want to access the latest received ground steering, don't forget to lock the mutex:
-                /*{
-                    std::lock_guard<std::mutex> lck(gsrMutex);
-                    std::cout << "main: groundSteering = " << gsr.groundSteering() << std::endl;
-                }*/
 
                 // Get FPS
                 dp.getFPS(tm, &number_of_frames, &fps);
@@ -206,19 +186,19 @@ int32_t main(int32_t argc, char **argv) {
                 cv::putText(img, std::to_string(fps), cv::Point(10, 100), cv::FONT_HERSHEY_COMPLEX_SMALL, 1, CV_RGB(0, 255, 0));
 
                 // Prints diagnostic steering algo data which can be extracted into a CSV file
-                // TODO: replace gsr.groundSteering() with result from steering algo
                 if((objectCoordinates_blue.empty()&&objectCoordinates_yellow.empty()) || detectedDirection ==-1){
                     std::cout << "group_08;" << sample_time_stamp << ";-0" << std::endl;
                 }
-                else{
-                    if(!objectCoordinates_blue.empty()){
-                        std::cout << "Blue: group_08;" << sample_time_stamp << ";" <<dp.steeringWheelDirection(detectedDirection, 1, objectCoordinates_blue.at(0), 640) << std::endl;
-                    }
-                    else if(!objectCoordinates_yellow.empty()){
-                        std::cout << "Yellow: group_08;" << sample_time_stamp << ";" <<dp.steeringWheelDirection(detectedDirection, 0, objectCoordinates_yellow.at(0), 640) << std::endl;
-                    }
+                else if(!objectCoordinates_blue.empty()){
+                        std::cout << "Blue: group_08;" << sample_time_stamp << ";"
+                                  <<dp.steeringWheelDirection(detectedDirection, 1, objectCoordinates_blue.at(0), 640)
+                                  << std::endl;
                 }
-
+                else if(!objectCoordinates_yellow.empty()){
+                        std::cout << "Yellow: group_08;" << sample_time_stamp << ";"
+                                  <<dp.steeringWheelDirection(detectedDirection, 0, objectCoordinates_yellow.at(0), 640)
+                                  << std::endl;
+                }
                 // Display image windows on the screen
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);

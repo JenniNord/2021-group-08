@@ -31,7 +31,7 @@ std::vector<std::vector<cv::Point>> ObjectDetection::contourFilter(cv::Mat imgHS
 }
 
 // Method finds the bounding boxes of the contour of color filtered objects
-std::vector<cv::Rect>ObjectDetection::findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> boundRect) {
+std::vector<cv::Rect>ObjectDetection::findBoundingBox(std::vector<std::vector<cv::Point>> contours, std::vector<cv::Rect> &boundRect) {
     std::vector<std::vector<cv::Point>> contours_poly(contours.size());
 
     for(size_t i = 0; i < contours.size(); i++) {
@@ -56,6 +56,8 @@ void ObjectDetection::filtering(cv::Mat imgThresh) {
 
 std::vector<cv::Point> ObjectDetection::objectCenterCoordinates(const std::vector<cv::Rect>& objectRects){
     std::vector<cv::Point> objectCoordinates;
-    for(const cv::Rect& rc : objectRects){ objectCoordinates.emplace_back(cv::Point(rc.tl().x + rc.width / 2, rc.tl().y + rc.height / 2)); }
+    for(const cv::Rect& rc : objectRects){
+        objectCoordinates.emplace_back(cv::Point(rc.tl().x + rc.width / 2, rc.tl().y + rc.height / 2));
+    }
     return objectCoordinates;
 }
