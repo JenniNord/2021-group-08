@@ -93,7 +93,9 @@ int32_t main(int32_t argc, char **argv) {
             int32_t fps = 0;
             cv::TickMeter tm;
             int number_of_frames = 0;
-            int detectedDirection = -1; //Not detected: -1
+
+            int roiWidth; // Window size for steering algorithm
+            int detectedDirection = -1;   //Not detected: -1
                                           //Clockwise: 0
                                           //Anti-clockwise: 1
             
@@ -129,11 +131,14 @@ int32_t main(int32_t argc, char **argv) {
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
+                // Cropping the image based on if a direction has been detected or not
                 if(detectedDirection == -1) {
-                    roi = cv::Rect(0, 260, 640, 220);//Wider cropped image
+                    roiWidth = 640;
+                    roi = cv::Rect(0, 260, roiWidth, 220);//Wider cropped image
                 }
                 else {
-                    roi = cv::Rect(185, 315, 270, 80);//Smaller cropped image
+                    roiWidth = 207;
+                    roi = cv::Rect(214, 316, roiWidth, 50);//Smaller cropped image
                 }
                 croppedImg = imgHSV(roi);
                 croppedImgOriginalColor= img(roi);
@@ -191,12 +196,12 @@ int32_t main(int32_t argc, char **argv) {
                 }
                 else if(!objectCoordinates_blue.empty()){
                         std::cout << "Blue: group_08;" << sample_time_stamp << ";"
-                                  <<dp.steeringWheelDirection(detectedDirection, 1, objectCoordinates_blue.at(0), 640)
+                                  << dp.steeringWheelAngle(detectedDirection, 1, objectCoordinates_blue.at(0), roiWidth)
                                   << std::endl;
                 }
                 else if(!objectCoordinates_yellow.empty()){
                         std::cout << "Yellow: group_08;" << sample_time_stamp << ";"
-                                  <<dp.steeringWheelDirection(detectedDirection, 0, objectCoordinates_yellow.at(0), 640)
+                                  << dp.steeringWheelAngle(detectedDirection, 0, objectCoordinates_yellow.at(0), roiWidth)
                                   << std::endl;
                 }
                 // Display image windows on the screen

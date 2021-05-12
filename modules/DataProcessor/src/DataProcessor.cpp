@@ -1,7 +1,13 @@
 #include "../modules/DataProcessor//include/DataProcessor.hpp"
 #include <utility>
 
-// Calculates FPS based on number of iterations/frames the program can process per second
+/**
+ * Calculates FPS based on the number of iterations/frames the program can process per second
+ * 
+ * @param tm               OpenCV TickMeter object to track time
+ * @param number_of_frames increments each time method is called (every iteration of main loop)
+ * @param fps              pointer to FPS so the FPS can be updated
+ */
 void DataProcessor::getFPS(cv::TickMeter tm, int *number_of_frames, int32_t *fps) {
     // Increment the number of frames/loop iterations
     *number_of_frames = *number_of_frames + 1;
@@ -16,39 +22,42 @@ void DataProcessor::getFPS(cv::TickMeter tm, int *number_of_frames, int32_t *fps
     }
 }
 
+/**
+ * Calculates steering wheel angle based on cone color and direction using the ROI windowSize
+ * 
+ * @param  direction      clockwise = 0, counterclockwise = 1
+ * @param  coneColor      yellow = 0, blue = 1
+ * @param  coneCoordinate x position of detected cone on the ROI
+ * @param  windowSize     pixel width of the ROI
+ * @return                steering wheel angle
+ */
 float DataProcessor::steeringWheelAngle(bool direction, int coneColor, cv::Point coneCoordinate, int windowSize) {
-    int maxSteeringArea = windowSize/2;;
-    float SteeringAngle = 0.290888f;//Default to be max Steering
-    //Define maxSteeringArea value
-    if((direction&&coneColor) || (!direction&&!coneColor)){ //Cone color: 0 for Yellow, 1 for blue
-        maxSteeringArea = windowSize/2;
-    }
-    else if ((direction&&!coneColor) || (!direction&&coneColor)) {
-        maxSteeringArea = windowSize/2;
+    int maxSteeringAreaLeft = windowSize / 2 ; // < center px
+    int maxSteeringAreaRight = windowSize / 2; // > center px
+    float steeringAngle = 0.290888f; // Default to be max Steering
+
+    // counterclockwise & yellow OR clockwise & blue = LEFT SIDE
+    if ((direction && !coneColor) || (!direction && coneColor)) {
+        if (coneCoordinate.x >= maxSteeringAreaLeft) {
+            steeringAngle = -1 * steeringAngle; // -1 since we'll need to steer to the right
+        } else if (coneCoordinate.x < maxSteeringAreaLeft) {
+            steeringAngle = -1 * (steeringAngle / (float) maxSteeringAreaLeft) * (float) coneCoordinate.x;
+        }
+    // counterclockise & blue OR clockwise & yellow = RIGHT SIDE
+    } else if ((direction && coneColor) || (!direction && !coneColor)) {
+        if (coneCoordinate.x <= (float) maxSteeringAreaRight) {
+            return steeringAngle; // + since we'll need to steer to the left
+        } else if (coneCoordinate.x > maxSteeringAreaRight) {
+            // Calculates how much steering each of the pixels on the area on the right side is worth
+            // & then multiplies it with the number of pixels the cone is at with an offset (maxSteeringAreaRight)
+            // Finally subtracts the value from the maximum steering to get a result that decreases as the
+            // cone goes closer to the right
+            steeringAngle = steeringAngle - ((steeringAngle / (float) (windowSize - maxSteeringAreaRight)) * 
+                    ((float) coneCoordinate.x - maxSteeringAreaRight));
+        }
+    } else {
+        steeringAngle = -0;
     }
 
-    //Calculate SteeringAngle
-    if(coneCoordinate.x < maxSteeringArea){
-        SteeringAngle = (SteeringAngle/(float)maxSteeringArea)*(float)coneCoordinate.x;
-    }
-    else if(coneCoordinate.x > maxSteeringArea)
-    {
-        SteeringAngle = -(SteeringAngle/(float)maxSteeringArea)*(float)coneCoordinate.x;
-    }
-    return SteeringAngle;
-}
-
-float DataProcessor::steeringWheelDirection(bool direction, int coneColor, cv::Point coneCoordinate, int windowSize) {
-    float swa = steeringWheelAngle(direction, coneColor, std::move(coneCoordinate), windowSize);
-    //For different cone colors
-    switch (coneColor) {
-        case 0: //Yellow
-            if (direction) { return -1 * swa; }
-            else { return 0.290888f - swa; }
-        case 1: //Blue
-            if (direction) { return 0.290888f - swa;}
-            else { return swa * -1; }
-        default:
-            return 0;
-    }
+    return steeringAngle;
 }
