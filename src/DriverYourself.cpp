@@ -20,6 +20,7 @@
 // Include the OpenDLV Standard Message Set that contains messages that are usually exchanged for automotive or robotic applications 
 #include "opendlv-standard-message-set.hpp"
 // Include the GUI and image processing header files from OpenCV
+#include <cmath>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/core/types.hpp>
@@ -92,7 +93,7 @@ int32_t main(int32_t argc, char **argv) {
             // FPS variables
             int32_t fps = 0;
             cv::TickMeter tm;
-            int number_of_frames = 0;
+            int number_of_frames_fps = 0, total_frame_number = 0, number_of_frame_passes_accurate = 0, number_of_frame_passes = 0;
 
             int roiWidth; // Window size for steering algorithm
             int detectedDirection = -1;   //Not detected: -1
@@ -105,7 +106,7 @@ int32_t main(int32_t argc, char **argv) {
                 cv::Mat img, imgHSV, croppedImg, croppedImgOriginalColor;
                 cv::Rect roi;
                 time_t sample_time_stamp;
-                float sample_gsa;
+                float sample_gsa, gsaAlgoResult;
                 ObjectDetection od;
                 DataProcessor dp;
 
@@ -131,6 +132,7 @@ int32_t main(int32_t argc, char **argv) {
                 // Converting the RGB image to an HSV image
                 cvtColor(img, imgHSV, cv::COLOR_BGR2HSV);
 
+                total_frame_number++;//Count frame number
                 // Cropping the image based on if a direction has been detected or not
                 if(detectedDirection == -1) {
                     roiWidth = 640;
@@ -167,7 +169,7 @@ int32_t main(int32_t argc, char **argv) {
                 }
 
                 //Create string stream for manipulate message blocks
-                std::stringstream ss, gsrss, yellowCoordinatesString, blueCoordinatesString;
+                std::stringstream ss, gsrss, yellowCoordinatesString, blueCoordinatesString, approachTestResult_accurate, approachTestResult_deviation;
 
                 ss << "ts: " << sample_time_stamp << "; Group 8;";
                 cv::putText(img, ss.str(), cv::Point(0,25), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
@@ -186,24 +188,42 @@ int32_t main(int32_t argc, char **argv) {
                 cv::putText(img, blueCoordinatesString.str(), cv::Point(0,70), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
 
                 // Get FPS
-                dp.getFPS(tm, &number_of_frames, &fps);
+                dp.getFPS(tm, &number_of_frames_fps, &fps);
                 // Display FPS on windows
                 cv::putText(img, std::to_string(fps), cv::Point(10, 100), cv::FONT_HERSHEY_COMPLEX_SMALL, 1, CV_RGB(0, 255, 0));
 
                 // Prints diagnostic steering algo data which can be extracted into a CSV file
                 if((objectCoordinates_blue.empty()&&objectCoordinates_yellow.empty()) || detectedDirection ==-1){
+                    gsaAlgoResult = 0;
                     std::cout << "group_08;" << sample_time_stamp << ";-0" << std::endl;
                 }
                 else if(!objectCoordinates_blue.empty()){
-                        std::cout << "Blue: group_08;" << sample_time_stamp << ";"
-                                  << dp.steeringWheelAngle(detectedDirection, 1, objectCoordinates_blue.at(0), roiWidth)
-                                  << std::endl;
+                    gsaAlgoResult = dp.steeringWheelAngle(detectedDirection, 1, objectCoordinates_blue.at(0), roiWidth);
+                    std::cout << "Blue: group_08;" << sample_time_stamp << ";" << gsaAlgoResult << std::endl;
                 }
                 else if(!objectCoordinates_yellow.empty()){
-                        std::cout << "Yellow: group_08;" << sample_time_stamp << ";"
-                                  << dp.steeringWheelAngle(detectedDirection, 0, objectCoordinates_yellow.at(0), roiWidth)
-                                  << std::endl;
+                    gsaAlgoResult = dp.steeringWheelAngle(detectedDirection, 0, objectCoordinates_yellow.at(0), roiWidth);
+                    std::cout << "Yellow: group_08;" << sample_time_stamp << ";" << gsaAlgoResult << std::endl;
                 }
+
+                if(std::fabs(gsaAlgoResult-sample_gsa) < 1e-15){
+                    number_of_frame_passes_accurate++; //Counting the frame where the algo is exactly the same compare to sample gsa
+                }
+
+                if(std::fabs(gsaAlgoResult-sample_gsa) >= 0 && std::fabs(gsaAlgoResult-sample_gsa)<=std::fabs(sample_gsa/2) ){
+                    number_of_frame_passes++; //Counting the frames with +/-50% deviation compare to sample gsa
+                }
+
+                std::cout << "Full accurate frames: " << number_of_frame_passes_accurate << std::endl;
+                std::cout << "Within 50% deviation frames: " << number_of_frame_passes << std::endl;
+                std::cout << "Total received frames: " << total_frame_number << std::endl;
+
+                approachTestResult_accurate << "Full accurate %: " << ((double)number_of_frame_passes_accurate/(double)total_frame_number)*100 << "%";
+                approachTestResult_accurate << "50% deviation %: " << ((double)number_of_frame_passes/(double)total_frame_number)*100 << "%";
+
+                cv::putText(img, approachTestResult_accurate.str(), cv::Point(0,120), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
+                cv::putText(img, approachTestResult_deviation.str(), cv::Point(0,135), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
+
                 // Display image windows on the screen
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
