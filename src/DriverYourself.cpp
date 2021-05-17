@@ -157,7 +157,7 @@ int32_t main(int32_t argc, char **argv) {
                 total_frame_number++;//Count frame number
                 // Cropping the image based on if a direction has been detected or not
                 if(detectedDirection == -1) {
-                    roiWidth = 640;
+                    roiWidth = WIDTH;
                     roi = cv::Rect(0, 260, roiWidth, 220);//Wider cropped image
                 }
                 else {
@@ -217,12 +217,14 @@ int32_t main(int32_t argc, char **argv) {
                 }
                 else if(!objectCoordinates_blue.empty()){
                     gsaAlgoResult = dp.steeringWheelAngle(detectedDirection, 1, objectCoordinates_blue.at(0), roiWidth);
-                    std::cout << "Blue: group_08;" << sample_time_stamp << ";" << gsaAlgoResult << std::endl;
+                    std::cout << "group_08;" << sample_time_stamp << ";" << gsaAlgoResult << std::endl;
                 }
                 else if(!objectCoordinates_yellow.empty()){
                     gsaAlgoResult = dp.steeringWheelAngle(detectedDirection, 0, objectCoordinates_yellow.at(0), roiWidth);
-                    std::cout << "Yellow: group_08;" << sample_time_stamp << ";" << gsaAlgoResult << std::endl;
+                    std::cout << "group_08;" << sample_time_stamp << ";" << gsaAlgoResult << std::endl;
                 }
+
+                std::cout << "GSR;" << sample_time_stamp << ";" << sample_gsa << std::endl;
 
                 //Counting frame for test approach results
                 if(std::fabs(gsaAlgoResult-sample_gsa) < 1e-15){
