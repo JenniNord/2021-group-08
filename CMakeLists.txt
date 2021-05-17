@@ -96,8 +96,8 @@ set(LIBRARIES ${LIBRARIES} ${OpenCV_LIBS})
 add_executable(
         ${PROJECT_NAME}
         ${CMAKE_CURRENT_SOURCE_DIR}/src/${PROJECT_NAME}.cpp
-        modules/ObjectDetection/src/ObjectDetection.cpp
-        modules/DataProcessor/src/DataProcessor.cpp)
+        modules/ObjectDetector/src/ObjectDetector.cpp
+        modules/SteeringWheelCalculator/src/SteeringWheelCalculator.cpp)
 target_link_libraries(${PROJECT_NAME} ${LIBRARIES})
 
 # Add dependency to OpenDLV Standard Message Set.
@@ -106,7 +106,7 @@ add_dependencies(${PROJECT_NAME} generate_opendlv_standard_message_set_hpp)
 
 # Create test build target
 enable_testing()
-add_executable(TestObjectDetection modules/ObjectDetection/test/ObjectDetectionTest.cpp modules/ObjectDetection/test/CatchMain.cpp)
+add_executable(TestObjectDetection modules/ObjectDetector/test/ObjectDetectionTest.cpp modules/ObjectDetector/test/CatchMain.cpp)
 add_test(NAME TestObjectDetection COMMAND TestObjectDetection)
 
 ################################################################################

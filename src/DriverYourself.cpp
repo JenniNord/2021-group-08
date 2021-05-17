@@ -28,8 +28,8 @@
 //Include header from std library
 #include <iostream>
 //Include modules
-#include "../modules/ObjectDetection/include/ObjectDetection.hpp"
-#include "../modules/DataProcessor/include/DataProcessor.hpp"
+#include "../modules/ObjectDetector/include/ObjectDetector.hpp"
+#include "../modules/SteeringWheelCalculator/include/SteeringWheelCalculator.hpp"
 
 // Define section
 #define YMINH 19
@@ -45,6 +45,28 @@
 #define BMAXS 255   // 200   // 255  // 200
 #define BMINV 40    // 42    // 51   // 42
 #define BMAXV 216   // 215   // 255  // 215
+
+
+/**
+ * Calculates FPS based on the number of iterations/frames the program can process per second
+ *
+ * @param tm               OpenCV TickMeter object to track time
+ * @param number_of_frames increments each time method is called (every iteration of main loop)
+ * @param fps              pointer to FPS so the FPS can be updated
+ */
+void getFPS(cv::TickMeter tm, int *number_of_frames, int32_t *fps) {
+    // Increment the number of frames/loop iterations
+    *number_of_frames = *number_of_frames + 1;
+
+    // Calculate FPS every 10 frames/iterations
+    if (*number_of_frames == 10) {
+        tm.stop();
+        double current_time = tm.getTimeSec();
+        *fps = (int) (*number_of_frames / current_time);
+        tm.reset();
+        *number_of_frames = 0;
+    }
+}
 
 int32_t main(int32_t argc, char **argv) {
     int32_t retCode{1};
@@ -107,8 +129,8 @@ int32_t main(int32_t argc, char **argv) {
                 cv::Rect roi;
                 time_t sample_time_stamp;
                 float sample_gsa, gsaAlgoResult;
-                ObjectDetection od;
-                DataProcessor dp;
+                ObjectDetector od;
+                SteeringWheelCalculator dp;
 
                 // Start time meter for fps counter
                 tm.start();
@@ -174,10 +196,6 @@ int32_t main(int32_t argc, char **argv) {
                 ss << "ts: " << sample_time_stamp << "; Group 8;";
                 cv::putText(img, ss.str(), cv::Point(0,25), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
 
-                //Ground steering request string
-                gsrss << "GroundSteeringRequest: " << sample_gsa << ";";
-                cv::putText(img, gsrss.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
-
                 //Detected objects center coordinates
                 yellowCoordinatesString << "Yellow objects: ";
                 for(const cv::Point& pt: objectCoordinates_yellow) { yellowCoordinatesString << "(" << pt.x << "," << pt.y << ") "; }
@@ -188,7 +206,7 @@ int32_t main(int32_t argc, char **argv) {
                 cv::putText(img, blueCoordinatesString.str(), cv::Point(0,70), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
 
                 // Get FPS
-                dp.getFPS(tm, &number_of_frames_fps, &fps);
+                getFPS(tm, &number_of_frames_fps, &fps);
                 // Display FPS on windows
                 cv::putText(img, std::to_string(fps), cv::Point(10, 100), cv::FONT_HERSHEY_COMPLEX_SMALL, 1, CV_RGB(0, 255, 0));
 
@@ -206,20 +224,25 @@ int32_t main(int32_t argc, char **argv) {
                     std::cout << "Yellow: group_08;" << sample_time_stamp << ";" << gsaAlgoResult << std::endl;
                 }
 
+                //Counting frame for test approach results
                 if(std::fabs(gsaAlgoResult-sample_gsa) < 1e-15){
                     number_of_frame_passes_accurate++; //Counting the frame where the algo is exactly the same compare to sample gsa
                 }
-
                 if(std::fabs(gsaAlgoResult-sample_gsa) >= 0 && std::fabs(gsaAlgoResult-sample_gsa)<=std::fabs(sample_gsa/2) ){
                     number_of_frame_passes++; //Counting the frames with +/-50% deviation compare to sample gsa
                 }
 
-                std::cout << "Full accurate frames: " << number_of_frame_passes_accurate << std::endl;
+                //Ground steering request string
+                gsrss << "GroundSteeringRequest: Sample:" << sample_gsa << "; Algorithm: " << gsaAlgoResult;
+                cv::putText(img, gsrss.str(), cv::Point(0,40), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
+
+                //Statics data about the algorithm calculation
+                /* std::cout << "Full accurate frames: " << number_of_frame_passes_accurate << std::endl;
                 std::cout << "Within 50% deviation frames: " << number_of_frame_passes << std::endl;
-                std::cout << "Total received frames: " << total_frame_number << std::endl;
+                std::cout << "Total received frames: " << total_frame_number << std::endl; */
 
                 approachTestResult_accurate << "Full accurate %: " << ((double)number_of_frame_passes_accurate/(double)total_frame_number)*100 << "%";
-                approachTestResult_accurate << "50% deviation %: " << ((double)number_of_frame_passes/(double)total_frame_number)*100 << "%";
+                approachTestResult_deviation << "50% deviation %: " << ((double)number_of_frame_passes/(double)total_frame_number)*100 << "%";
 
                 cv::putText(img, approachTestResult_accurate.str(), cv::Point(0,120), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
                 cv::putText(img, approachTestResult_deviation.str(), cv::Point(0,135), cv::FONT_HERSHEY_COMPLEX_SMALL, 0.7, cv::Scalar(255,255,255),1);
@@ -227,7 +250,7 @@ int32_t main(int32_t argc, char **argv) {
                 // Display image windows on the screen
                 if (VERBOSE) {
                     cv::imshow(sharedMemory->name().c_str(), img);
-                    cv::imshow("Bounding Boxes", croppedImgOriginalColor);
+                    cv::imshow("Region of Interest", croppedImgOriginalColor);
                     cv::waitKey(1);
                 }
             }

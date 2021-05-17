@@ -3,10 +3,9 @@
 
 #include <opencv2/core/utility.hpp>
 
-class DataProcessor{
+class SteeringWheelCalculator{
     public:
         float steeringWheelAngle(bool direction, int coneColor, cv::Point coneCoordinate, int windowSize);
-        void getFPS(cv::TickMeter tm, int* number_of_frames, int32_t* fps);
 };
 
 #endif //DATAPROCESSOR
