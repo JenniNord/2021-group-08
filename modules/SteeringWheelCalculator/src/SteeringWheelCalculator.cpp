@@ -10,8 +10,8 @@
  * @return                steering wheel angle
  */
 float SteeringWheelCalculator::steeringWheelAngle(bool direction, int coneColor, cv::Point coneCoordinate, int windowSize) {
-    int maxSteeringAreaLeft = windowSize / 2 ; // < center px
-    int maxSteeringAreaRight = windowSize / 2; // > center px
+    int maxSteeringAreaLeft = (windowSize / 2) - 5 ; // 5 px < center px
+    int maxSteeringAreaRight = (windowSize / 2) + 5; // 5 px > center px
     float steeringAngle = 0.290888f; // Default to be max Steering
 
     // counterclockwise & yellow OR clockwise & blue = LEFT SIDE
